@@ -1,3 +1,4 @@
+
 <!doctype html>
 <html>
 	<head>
@@ -7,8 +8,24 @@
 		<title>reveal.js</title>
 
 		<link rel="stylesheet" href="css/reveal.css">
-		<link rel="stylesheet" href="css/theme/black.css">
-
+		<link rel="stylesheet" href="css/theme/solarized.css">
+		<style type="text/css">
+			.reveal h1,
+			.reveal h2,
+			.reveal h3 {
+				text-transform: none;
+			}
+			.reveal section img {
+				border: none;
+				box-shadow: none;
+				background: none;
+				vertical-align: middle;
+			}
+			html, body, .reveal {
+				font-size: 28px;
+				font-family: "Noto Sans", "Source Sans Pro";
+			}
+		</style>
 		<!-- Theme used for syntax highlighting of code -->
 		<link rel="stylesheet" href="lib/css/zenburn.css">
 
@@ -24,10 +41,333 @@
 	<body>
 		<div class="reveal">
 			<div class="slides">
-				<section>Slide 1</section>
-				<section>Slide 2</section>
+				<section data-markdown>
+					<textarea data-template>
+						# Roll your own reactive node server for fun and ~~profit~~ learning
+
+						<img src="lib/Rx_Logo_S.png" style="height: 4em;" />
+						<img src="lib/js_logo.png" style="height: 4em;" />
+
+						<span style="color: red">Dr.&nbsp;Jan-Jan van der Vyver</span>
+
+						<img src="lib/nearform-logotype.svg" style="height: 1em;" />
+
+
+						Note:
+
+						* nearForm -- it is a great place to work
+						* these thoughts are my own, and nearForm should not be blamed for anything I say
+
+						* talk about a project I tried one Saturday
+							* says nothing special about me
+							* rather how easy node and rxjs is to use
+						* share what I learned
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						# my (software) story
+
+						* 1st: naughts-and-crosses "AI" in QBasic<!-- .element: style="color: lightgrey" -->
+						* Hacking MS-DOS and games <!-- .element: style="color: lightgrey" -->
+						* Solving and plotting algebra in Pascal <!-- .element: style="color: lightgrey" -->
+						* PID controllers in assembler on EPROM <!-- .element: style="color: lightgrey" -->
+						* Neural Network training parallisation in C (PVM) <!-- .element: style="color: lightgrey" -->
+						* Neuronal dynamics modelling in NEURON <!-- .element: style="color: lightgrey" -->
+						* Dynamic circuit modelling Matlab <!-- .element: style="color: lightgrey" -->
+						* Industrial Information Technology mega-project lead <!-- .element: style="color: lightgrey" -->
+						* Founded SaaS Startup (RoR) <!-- .element: style="color: lightgrey" -->
+						* CEO/CTO for hire <!-- .element: style="color: lightgrey" -->
+						* Fullstack Javascript <!-- .element: style="color: lightgrey" -->
+						* One morning I felt like learning reactive programming (rxjs) [[1]](http://thecodebarbarian.com/rest-apis-with-observables.html)[[2]](https://glebbahmutov.com/blog/node-server-with-rx-and-cycle/)
+
+						Note:
+
+						* an ADD case study
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						<h2>Node <img src="lib/js_logo.png" style="height: 1.2em;" /></h2>
+
+						* javascript on the server
+						* developer productivity: writing webservers
+						* asynchronous
+
+						<hr />
+
+						<h2>ReactiveX <img src="lib/Rx_Logo_S.png" style="height: 1.2em;" /></h2>
+
+						* "<span style="color: lightgrey">An API for</span> asynchronous programming with observable streams"
+						* "<span style="color: lightgrey">ReactiveX is a</span> combination <span style="color: lightgrey">of the best ideas from the</span> Observer <span style="color: lightgrey">pattern, the</span> Iterator <span style="color: lightgrey">pattern, and</span> functional <span style="color: lightgrey">programming</span>"
+
+						* *available in your favourite language* = transferable skillset
+
+
+						Note:
+
+						* node productivity:
+							* package ecosystem
+							* testing
+							* can write simple, easy to read & reason about code
+						* node: event-driven, non-blocking I/O model that makes it lightweight and efficient
+					</textarea>
+				</section>
+
+
+				<section data-markdown>
+					<textarea data-template>
+						<h2><img src="lib/Rx_Logo_S.png" style="height: 1.2em;" /> easy to reason about transformations in time</h2>
+
+						<div style="display: flex">
+							<div style="flex: 1">
+								<img src="lib/multiple-clickstreams.png" style="height: 60%; margin: 0" />
+								<p style="font-size: 0.5rem; margin-top: 0px;">
+								<a href="https://gist.github.com/staltz/868e7e9bc2a7b8c1f754"><img src="lib/cc.png" style="height: 1em;" /> taken from a great tutorial by Andre Staltz</a>
+								</p>
+							</div>
+							<div style="flex: 1">
+								<ul>
+								 	<li>functions over observable streams</li>
+									<li>abstract away low-level threading, synchronization, and concurrency issues</li>
+									<li>great for multiple sources of events, e.g., frontend
+										<img src="lib/angular.png" style="height: 1em"/>
+										<img src="lib/redux-observable.png" style="height: 1em"/>
+										<g-emoji class="g-emoji" alias="eye" fallback-src="https://assets-cdn.github.com/images/icons/emoji/unicode/1f441.png" ios-version="9.1" style="height: 1em">👁️</g-emoji>
+									</li>
+								</ul>
+
+								<p style="margin-top: 2em; color: lightgrey">disclaimer: easy to test pure functions, but less so the interactions</p>
+							</div>
+						</div>
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						## opportunity/bwteim: ~~magic~~
+
+						* node's http is very simple
+
+						```
+						const http = require(`http`)
+						http.createServer((request, response) => {
+								// event: send response based on request
+							})
+							.listen(3000);
+						```
+
+						### but web frameworks'
+
+						piece-meal/spread-out middleware and plug-ins<br />
+						**make it hard to reason about**<br />
+						how, and in what sequence,<br />
+						the (http) event is transformed
+
+						Note:
+
+						* Node has a number of very successful server packages, but unless you know their internals things appear to be magic
+						* express `app.use`
+						* hapi `server.register`
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						## opportunity/bwteim: ~~magic~~
+
+						* all processing defined sequentially in 1 place <!-- .element: class="fragment" data-fragment-index="1" -->
+
+						```
+						const middleware = http$ =>
+							http$
+								// log event
+								// parse url
+								// serve static content
+								// route dynamic content
+						```
+						<!-- .element: class="fragment" data-fragment-index="1" -->
+
+						* library should create stream from events & send response <!-- .element: class="fragment" data-fragment-index="2" -->
+
+						```
+						const createServerCallback = middleware => (req, res) => {
+							// turn event into stream
+							// chain stream through middleware
+							// send response
+						}
+
+						const serverCallback = createServerCallback(middleware)
+						```
+						<!-- .element: class="fragment" data-fragment-index="2" -->
+
+						* stick to node http
+
+						```
+						const http = require("http")
+						http.createServer(serverCallback)
+							.listen(3000);
+						```
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						## proof of concept: turn event into stream (using Subject)
+
+						```
+						const Rx = require('rx')
+						const http$ = new Rx.Subject()
+						```
+						<!-- .element: class="fragment" data-fragment-index="1" -->
+
+						```
+						const sendHello = ({ res }) => {
+							res.writeHead(200, { 'Content-Type': 'text/plain' });
+							res.end('Hello World\n');
+						}
+						```
+						<!-- .element: class="fragment" data-fragment-index="2" -->
+
+
+						```
+						const subscription = http$
+							.do(({ req }) => console.log(`req.url = ${req.url}`))
+							.subscribe(sendHello)
+						```
+						<!-- .element: class="fragment" data-fragment-index="3" -->
+
+						```
+						process.on('exit', () => subscription.dispose())
+						```
+						<!-- .element: class="fragment" data-fragment-index="4" -->
+
+						```
+						const serverCallback = (req, res) => {
+						  http$.onNext({ req, res })
+						}
+						```
+						<!-- .element: class="fragment" data-fragment-index="1" -->
+
+						```
+						const http = require("http")
+						http.createServer(serverCallback)
+							.listen(3000);
+						```
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						## turn PoC into a library (inspired by Cycle.js)
+
+						```
+						const serverCallback = (req, res) => http$.onNext({ req, res })
+						```
+
+						* split responsibility:
+						<!-- .element: class="fragment" data-fragment-index="1" -->
+
+						```
+						const middle = http$ => http$.do(e => console.log('request to', e.req.url))
+
+						const write = (http$) => http$.subscribe(sendHello)
+
+						// const subscription = write(middle(http$))
+						```
+						<!-- .element: class="fragment" data-fragment-index="1" -->
+
+						* neaten it all up
+						<!-- .element: class="fragment" data-fragment-index="2" -->
+
+						```
+						function makeEffect() { // wrapper of read and write effects
+							const http$ = new Rx.Subject()
+
+							return {
+								write,
+								serverCallback,
+								read: http$
+							}
+						}
+
+						const rxServerCallback = (middle) => {
+							const effect = makeEffect()
+							const subscription = effect.write(middle(effect.read))
+							return effect.serverCallback
+						}
+						```
+						<!-- .element: class="fragment" data-fragment-index="2" -->
+
+						```
+						const http = require("http")
+						http.createServer(rxServerCallback(middle))
+							.listen(3000);
+						```
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						## real-life expectations: rxserver
+
+						```
+						const routes = [
+						  {
+						    url: '/name/:name',
+						    handler: ({ params, query }) => `Hello ${params.name} with ${JSON.stringify(query)}`,
+						  },
+						  {
+						    url: '/user', method: 'POST',
+						    handler: async ({ body }) => await Promise.resolve({ statusCode: 201, body }),
+						  },
+						  {
+						    url: 'stream',
+						    handler: () => fs.createReadStream(__dirname + '/index.js'),
+						  }
+						]						```
+						<!-- .element: class="fragment" data-fragment-index="1" -->
+
+
+						```
+						const http = require("http")
+						const rxserver = require("rxserver")
+						const { logger, parseUrl } = rxserver
+
+						const middleware = ({ http$ }) => ({
+						  http$: http$
+						    .do(logger)
+						    .catchMap(parseUrl) // map operator with error catching
+						    .route(routes), // psuedo route operator
+						})
+
+						const { httpServerCallback } = rxserver.createServerCallbacks(middle)
+						http.createServer(httpServerCallback)
+							.listen(3000);
+						```
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						## operator overloading
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						## inspired by functional programming
+					</textarea>
+				</section>
 			</div>
 		</div>
+
+
+
+
+
 
 		<script src="lib/js/head.min.js"></script>
 		<script src="js/reveal.js"></script>

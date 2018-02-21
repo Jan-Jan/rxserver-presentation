@@ -252,13 +252,13 @@
 						```
 						http$
 							.do(({ req }) => console.log(`req.url = ${req.url}`))
-							.subscribe(sendHello)
+							.subscribe(sendHello) // required to be able to see items being emitted by Observable
 						```
 						<!-- .element: class="fragment" data-fragment-index="3" -->
 
 						```
 						const serverCallback = (req, res) => {
-						  http$.onNext({ req, res })
+						  http$.onNext({ req, res }) // insert event into stream as item
 						}
 						```
 						<!-- .element: class="fragment" data-fragment-index="1" -->
@@ -472,7 +472,7 @@
 
 						* tip: begin with the end in mind
 						* tip: keep it small (then break it into smaller pieces)
-						* rxjs: turn event sources into streams
+						* rxjs Subject: insert event into streams
 						* rxjs tip: operator overloading for new functionality
 						* **resulting programs are easy to follow/reason about**
 							* junior programmers can get started easily

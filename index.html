@@ -41,6 +41,7 @@
 	<body>
 		<div class="reveal">
 			<div class="slides">
+
 				<section data-markdown>
 					<textarea data-template>
 						# Roll your own reactive node server for fun and ~~profit~~ learning
@@ -84,7 +85,16 @@
 
 						Note:
 
-						* an ADD case study
+						* my career seems an ADD case study
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						# Please interrrupt and ask questions if anything is unclear
+
+						[https://github.com/Jan-Jan/rxserver](https://github.com/Jan-Jan/rxserver)
+
 					</textarea>
 				</section>
 
@@ -108,11 +118,18 @@
 
 						Note:
 
+						* show of hands: how many you
+							1. have heard of?
+							2. have you tried?
+							3. have you used in anger?
+
 						* node productivity:
 							* package ecosystem
 							* testing
 							* can write simple, easy to read & reason about code
 						* node: event-driven, non-blocking I/O model that makes it lightweight and efficient
+
+						* rxjs: lodash for async
 					</textarea>
 				</section>
 
@@ -233,16 +250,11 @@
 
 
 						```
-						const subscription = http$
+						http$
 							.do(({ req }) => console.log(`req.url = ${req.url}`))
 							.subscribe(sendHello)
 						```
 						<!-- .element: class="fragment" data-fragment-index="3" -->
-
-						```
-						process.on('exit', () => subscription.dispose())
-						```
-						<!-- .element: class="fragment" data-fragment-index="4" -->
 
 						```
 						const serverCallback = (req, res) => {
@@ -263,17 +275,13 @@
 					<textarea data-template>
 						## turn PoC into a library (inspired by Cycle.js)
 
-						```
-						const serverCallback = (req, res) => http$.onNext({ req, res })
-						```
-
 						* split responsibility:
 						<!-- .element: class="fragment" data-fragment-index="1" -->
 
 						```
 						const middle = http$ => http$.do(e => console.log('request to', e.req.url))
 
-						const write = (http$) => http$.subscribe(sendHello)
+						const write = http$ => http$.subscribe(sendHello)
 
 						// const subscription = write(middle(http$))
 						```
@@ -288,7 +296,7 @@
 
 							return {
 								write,
-								serverCallback,
+								serverCallback: (req, res) => http$.onNext({ req, res }),
 								read: http$
 							}
 						}
@@ -317,29 +325,28 @@
 						const routes = [
 						  {
 						    url: '/name/:name',
-						    handler: ({ params, query }) => `Hello ${params.name} with ${JSON.stringify(query)}`,
+								handler: ({ params, query }) => ({
+									body: Promise.resolve(`Hello ${params.name} with ${JSON.stringify(query)}`),
+								}),
 						  },
 						  {
-						    url: '/user', method: 'POST',
-						    handler: async ({ body }) => await Promise.resolve({ statusCode: 201, body }),
-						  },
-						  {
-						    url: 'stream',
-						    handler: () => fs.createReadStream(__dirname + '/index.js'),
+								url: 'stream',
+								method: 'PUT',
+								handler: async () => await fs.createReadStream(__dirname + '/index.js'),
 						  }
-						]						```
+						]
+						```
 						<!-- .element: class="fragment" data-fragment-index="1" -->
-
 
 						```
 						const http = require("http")
 						const rxserver = require("rxserver")
 						const { logger, parseUrl } = rxserver
 
-						const middleware = ({ http$ }) => ({
+						const middleware = ({ http$ }) => ({ // cater for multiple kinds of streams
 						  http$: http$
 						    .do(logger)
-						    .catchMap(parseUrl) // map operator with error catching
+						    .catchMap(parseUrl) // "map" operator with error catching
 						    .route(routes), // psuedo route operator
 						})
 
@@ -352,22 +359,149 @@
 
 				<section data-markdown>
 					<textarea data-template>
-						## operator overloading
+						## protecting users from themselves
+
+						* Obeservables does not play nice with errors: try/catch
+
+						```
+						const tryCatch = predicate =>
+						  async function ({ res, ...data }) {
+						    try {
+						      const result = await predicate(data)
+						      return Object.assign({}, data, result, { res })
+						    }
+						    catch (error) {
+									// log complete error
+									// prepare error to be sent
+						    }
+						  }
+						```
+
+						```
+						Observable.prototype.catchMap = function(predicate) {
+						  return this.switchMap(tryCatch(predicate))
+						}
+						```
 					</textarea>
 				</section>
 
 				<section data-markdown>
 					<textarea data-template>
-						## inspired by functional programming
+						## inspired by option type: rails with `op`
+
+						```
+						const middle = ({ http$ }) => ({``
+							http$
+								.static(__dirname + 'index.html')
+								.route(routesA)
+								.route(routesB)
+						})
+						```
+
+						```
+						const optionalExecution = (predicate, trying) =>
+						  async function (data) {
+						    return data.op
+						      ? data
+						      : await tryCatch(predicate)(data)
+						  }
+						```
+						<!-- .element: class="fragment" data-fragment-index="1" -->
+
+						```
+						Observable.prototype.catchMap = function(predicate) {
+						  return this.switchMap(optionalExecution(tryCatch(predicate))
+						}
+
+						Observable.prototype.route = function(routeDefinitions) {
+						  return this.catchMap(route(routeDefinitions))
+						}
+
+						Observable.prototype.static = function(root, options) {
+						  return this.catchMap(staticRouting(root, options))
+						}
+						```
+						<!-- .element: class="fragment" data-fragment-index="2" -->
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						## sendHello → sendResponse 4 static || stream
+
+						```
+						const contentType = op => {
+
+						  if (typeof op === 'string' || typeof op.body === 'string') return 'text/plain'
+						  if (op.hasOwnProperty('_readableState')) return 'application/octet-stream'
+						  return 'application/json'
+						}
+
+						const writeRes = (res, statusCode, body, cntntTp) => {
+
+							const contentType = cntntTp || _contentType(body)
+							res.writeHead(statusCode, { 'Content-Type': contentType })
+							if (contentType === 'application/octet-stream') {
+								body.pipe(res)
+							} else {
+								res.end(typeof body === 'string' ? body : JSON.stringify(body))
+							}
+						}
+						```
+						<!-- .element: class="fragment" data-fragment-index="1" -->
+
+						```
+						const next = async ({ res, op }) => {
+
+						  const statusCode = op ? op.statusCode || (op.body && op.body.error ? 500 : 200) : 404
+						  try {
+						    const body = op ? await (op.body || op) : { error: 'url not found' }
+						    writeRes(res, statusCode, body, op.contentType)
+						  }
+						  catch (err) {
+						    writeRes(res, err.statusCode || 500, err.message)
+						  }
+						}
+						```
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						# conclusion: node & rxjs
+
+						* tip: begin with the end in mind
+						* tip: keep it small (then break it into smaller pieces)
+						* rxjs: turn event sources into streams
+						* rxjs tip: operator overloading for new functionality
+						* **resulting programs are easy to follow/reason about**
+							* junior programmers can get started easily
+							* new programmers are easy to onboard
+
+						# next steps
+
+						* add `.express` operator to increase available libraries
+						* write test coverage to make contribution easier
+						* write docs to make it easier to use and to contribute to
+						* get an icon
+
+						Note:
+
+						* read my code if you want to understand more details of the library
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						?<!-- .element: style="font-size: 10em" -->
+
+						thank you<br />
+						I hope you enjoyed it<br />
+						& are inspired to write your own library
 					</textarea>
 				</section>
 			</div>
 		</div>
-
-
-
-
-
 
 		<script src="lib/js/head.min.js"></script>
 		<script src="js/reveal.js"></script>

@@ -5,7 +5,7 @@
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-		<title>reveal.js</title>
+		<title>rxserver by Dr. Jan-Jan</title>
 
 		<link rel="stylesheet" href="css/reveal.css">
 		<link rel="stylesheet" href="css/theme/solarized.css">
@@ -324,7 +324,7 @@
 						```
 						const routes = [
 						  {
-						    url: '/name/:name',
+								url: '/name/:name',
 								handler: ({ params, query }) => ({
 									body: Promise.resolve(`Hello ${params.name} with ${JSON.stringify(query)}`),
 								}),
@@ -498,6 +498,12 @@
 						thank you<br />
 						I hope you enjoyed it<br />
 						& are inspired to write your own library
+
+						<hr />
+
+						`npm i rxserver`
+
+						https://github.com/jan-jan/rxserver
 					</textarea>
 				</section>
 			</div>
